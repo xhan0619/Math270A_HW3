@@ -146,6 +146,7 @@ public:
   T rho;
   T k;
   T Newton_tol;
+  T tb; // XH: added right side Neumann BC
   int max_newton_it;
 
   ElasticityParameters(){}
@@ -160,6 +161,7 @@ class ElasticityDriver: public SimulationDriver<T>{
   int N;
   T a,dX;
   T rho,k;
+  T tb; // XH added right side Neumann BC
   TVect x_n,x_np1,v_n,x_hat,residual,mass,delta;
   T Newton_tol;
   int max_newton_it;
@@ -170,7 +172,7 @@ public:
 
   ElasticityDriver(ElasticityParameters<T>& parameters):
   SimulationDriver<T>(parameters),N(parameters.N),a(parameters.a),dX(parameters.dX),
-  rho(parameters.rho),k(parameters.k),x_n(parameters.N),x_np1(parameters.N),v_n(parameters.N),x_hat(parameters.N),residual(parameters.N),mass(parameters.N),delta(parameters.N),
+  rho(parameters.rho),k(parameters.k),tb(parameters.tb), x_n(parameters.N),x_np1(parameters.N),v_n(parameters.N),x_hat(parameters.N),residual(parameters.N),mass(parameters.N),delta(parameters.N),
   Newton_tol(parameters.Newton_tol),max_newton_it(parameters.max_newton_it),be_matrix(parameters.N){
     //cons_model=new LinearElasticity<T>(k);
     cons_model=new NeoHookean<T>(k);
@@ -192,7 +194,15 @@ public:
     //intialize mass lumped mass matrix from density
     for(int e=0;e<N-1;e++){
       mass(e)+=(T).5*rho*dX;
-      mass(e+1)+=(T).5*rho*dX;}
+
+      // XH: fixed the second entry of the mass matrix according to Dirichlet BC on left
+      if (e > 0){
+          mass(e+1)+=(T).5*rho*dX;
+      }
+      else {
+           mass(e+1)+=((T)1 / (T)3) *rho*dX;
+      }
+    }
 
     SimulationDriver<T>::Initialize();
   }
@@ -204,7 +214,9 @@ public:
 
     for(int it=1;it<max_newton_it;it++){
       residual=mass.asDiagonal()*(x_hat-x_np1);
-      lf->AddForce(residual,x_np1,dt*dt);
+      lf->AddForce(residual,x_np1, dt*dt); // XH: Added the right side Neumann BC
+      residual(0) = 0; // XH: force left end point residual = 0 because of Dirichlet BC
+      residual(N-1) += tb*dt*dt; // // XH: add the force on the right side because of Dirichlet BC
       T norm=(T)0;for(int i=0;i<N;i++) norm+=residual(i)*residual(i)/mass(i);
       norm=sqrt(norm);
       if(verbose)

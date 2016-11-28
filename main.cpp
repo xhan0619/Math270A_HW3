@@ -39,8 +39,9 @@ void ElasticitySimulation(){
   parameters.k=(T)1;
   parameters.Newton_tol=(T)1e-8;
   parameters.max_newton_it=40;
-  parameters.final_time=(T)4;
+  parameters.final_time=(T)12;
   parameters.frames_per_second=120;
+  parameters.tb = (T)-1; // XH initialize tb
   JIXIE::ElasticityDriver<T> driver(parameters);
   bool verbose=true;
   driver.RunSimulation(verbose);

@@ -12,7 +12,7 @@ class LagrangianForces{
 public:
   LagrangianForces(){}
   virtual T PotentialEnergy(const TVect& x){return (T)0;}
-  virtual void AddForce(TVect& force,const TVect& x,T scale=(T)1){}
+  virtual void AddForce(TVect& force,const TVect& x, T scale=(T)1){} 
   virtual void AddForceDerivative(SymmetricTridiagonal<T>& A,const TVect& x,T scale=(T)1){}
   virtual void AddForceDifferential(TVect& df,const TVect& x,const TVect& dx,T scale=(T)1){}
 };
@@ -89,7 +89,7 @@ public:
     return PE;
   }
 
-  void AddForce(TVect& force,const TVect& x,T scale=(T)1){
+  void AddForce(TVect& force,const TVect& x, T scale=(T)1){
     for(int e=0;e<N-1;e++){
       T P;cons_model.P(P,F(x,e));
       force(e)+=scale*P;
@@ -102,7 +102,13 @@ public:
       T dPdF;cons_model.dPdF(dPdF,F(x,e));
       TMat2 element_stiffness;
       T entry=scale*dPdF/dX;
-      element_stiffness << -entry,entry,entry,-entry;
+      
+      // XH : made special change to the case e = 0
+      if (e == 0)
+        element_stiffness << -entry, 0, 0, -entry;
+      else
+        element_stiffness << -entry,entry,entry,-entry;
+
       for(int i=0;i<2;i++){
         for(int j=i;j<2;j++){
           A(e+i,e+j)+=element_stiffness(i,j);}}
@@ -116,7 +122,13 @@ public:
       T dPdF;cons_model.dPdF(dPdF,F(x,e));
       TMat2 element_stiffness;
       T entry=dPdF/dX;
-      element_stiffness << -entry,entry,entry,-entry;
+
+      // XH : made special change to the case e = 0
+      if (e == 0)
+        element_stiffness << -entry, 0, 0, -entry;
+      else
+        element_stiffness << -entry,entry,entry,-entry;
+
       for(int i=0;i<2;i++){
         for(int j=i;j<2;j++){
           dfdx(e+i,e+j)+=element_stiffness(i,j);}}
