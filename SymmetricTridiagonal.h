@@ -25,6 +25,13 @@ TVect d,mu;
 std::vector<GivensRotation<T> > Q;//the ith entry in the array introduces a zero in the i+1,i entry
 TVect r1,r2,r3;
 
+//GMRES
+std::vector<TVect> q;
+std::vector<TVect> h; // hold columns of H;
+TMat H; // hold actual H
+std::vector<GivensRotation<T> > QQ; // Might not needed
+
+
 public:
   SymmetricTridiagonal(const int n_input):n(n_input){alpha.resize(n_input);beta.resize(n_input-1);
     alpha=TVect::Zero(n);
@@ -193,6 +200,88 @@ public:
     Q[n-2].rowRotation(temp);
     r2(n-2)=temp(0);
     r1(n-1)=temp(1);
+  }
+
+  void GMRESSolve(TVect& x,const TVect& b){
+      assert(n>2); // Can't GMRESSole if matrix is too small.
+      // initialize all list to empty
+      QQ.resize(0);
+      h.resize(0);
+      q.resize(0);
+
+      GivensRotation<T> r; // GivensRotation holder
+      // T residualBound = 0.00000000000001; //TODO: find the right bound
+      const ScalarType<T> residualBound = 128 * std::numeric_limits<ScalarType<T> >::epsilon();
+      T residual = 1;  // Set intial residual large enough
+      TVect t;         // t is the residual vector
+      t.resize(2);  t(0) = b.norm(); t(1) = 0; //Initially it has size 2
+
+      // Generate Arnoldi Basis following Algorithm 33.1
+      q.push_back(b/b.norm());
+      int numOfBasis = 1;
+      TVect h_temp; // hold new h_column
+      while (numOfBasis <= n && std::abs(residual) > residualBound){
+        TVect v; v.resize(n);
+        this->Multiply(q[numOfBasis-1], v); // v = Aq_k
+        h_temp.resize(numOfBasis+1); // h has numOfBasis + 1 nonzero entries
+                                    // (think about the first step)
+
+        for (int i = 0; i < numOfBasis; i++){
+            h_temp(i) = q[i].dot(v);
+            v -= h_temp(i)*q[i];
+        }
+        h_temp(numOfBasis) = v.norm(); 
+        if (h_temp(numOfBasis) != (T)0)
+            q.push_back(v / h_temp(numOfBasis));
+        else 
+            q.push_back(v/v.norm()); // if v is in the previous Krylov space, so will the solution x,
+                                     // hence what the new q is doesn't matter
+        numOfBasis++; // At this point, we added a new basis
+
+        // Givens rotate h_temp with all the previously stored givens 
+        for (int i = 0; i < QQ.size(); i++){
+          QQ[i].rowRotation(h_temp);
+        }
+        
+        // now add a new givens and check the residual
+        // thinking about the first givens helps you get the indices right
+        // The first givens affect the 1st and 2nd row and flips h(2,1) to h(1,1)
+        GivensRotation<T> r(h_temp(numOfBasis-2), h_temp(numOfBasis-1), numOfBasis-2, numOfBasis-1);
+        QQ.push_back(r); // push the new givens to list
+        r.rowRotation(h_temp);
+        h.push_back(h_temp); // now move the givens rotated h to the list 
+        r.rowRotation(t); // rotate the get residual
+        residual = t(numOfBasis-1); // residual is the last entry in t.
+        t.conservativeResize(numOfBasis+1); //resize t
+        t(numOfBasis) = (T)0; // make sure to initialize this
+      }
+
+      // now form H
+      H = TMat::Zero(numOfBasis, numOfBasis-1);
+      for (int j = 0; j < numOfBasis-1; j++){
+        for (int i = 0; i < j+2; i++){
+          H(i,j) = h[j](i); // fill in H (index is a bitch)
+        }
+      }
+
+      // back substitution to find lambda (using the notation from lecture notes 11/04)
+      TVect lambda;
+      lambda.resize(numOfBasis-1);
+      int k = numOfBasis-1;
+      lambda(k-1) = t(k-1)/H(k-1, k-1);
+      for (int i = k-2; i >=0; i--){
+        T temp = t(i);
+        for (int j = k-1; j>i; j--){
+          temp -= H(i,j) * lambda(j);
+        }
+        lambda(i) = temp/H(i,i);
+      }
+
+      // now form x
+      x = TVect::Zero(n);
+      for (int i = 0; i< numOfBasis-1; i++){ // the last basis will not be a part of the sol
+        x += lambda(i) * q[i];
+      }
   }
 };
 }
