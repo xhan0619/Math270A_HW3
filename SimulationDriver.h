@@ -238,7 +238,7 @@ public:
       else {
            mass(e+1)+=((T)1 / (T)3) *rho*dX;
       }
-      assert(xyz_n.size() == 12 * N);
+      //assert(xyz_n.size() == 12 * N);
     }
 
     SimulationDriver<T>::Initialize();
@@ -330,7 +330,6 @@ public:
     for (int i = 0; i < N; i++){
       if (i == 0)
         a = JIXIE::MATH_TOOLS::rsqrt(F(x_n,i+1));
-      
       else
         a = JIXIE::MATH_TOOLS::rsqrt(F(x_n,i));
       xyz_n(i*12) = x_n(i);
@@ -378,7 +377,7 @@ public:
     std::string frame_name(str);
 
     std::string positions_filename(std::string("particle_x_")+frame_name);
-    FILE_IO::Write_Binary(output_directory,positions_filename,xyz_n);
+    FILE_IO::Write_Binary(output_directory,positions_filename,x_n);
     std::string velocities_filename(std::string("particle_v_")+frame_name);
     FILE_IO::Write_Binary(output_directory,velocities_filename,v_n);
   }

@@ -29,7 +29,7 @@ void ElasticitySimulation(){
   typedef Eigen::Matrix<T,Eigen::Dynamic,1> TVect;
 
   JIXIE::ElasticityParameters<T> parameters;
-  parameters.N=40;
+  parameters.N=20;
   parameters.a=(T)0;
   T b=(T)1;
   parameters.dX=(b-parameters.a)/(T)(parameters.N-1);
@@ -39,8 +39,8 @@ void ElasticitySimulation(){
   parameters.k=(T)1;
   parameters.Newton_tol=(T)1e-8;
   parameters.max_newton_it=40;
-  parameters.final_time=(T)15;
-  parameters.frames_per_second=120;
+  parameters.final_time=(T)6;
+  parameters.frames_per_second=60;
   parameters.tb = (T)0.05; // XH initialize tb
   parameters.width = 0.06; // XH initialize width
   JIXIE::ElasticityDriver<T> driver(parameters);
